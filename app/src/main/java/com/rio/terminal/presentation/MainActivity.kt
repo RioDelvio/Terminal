@@ -1,7 +1,6 @@
 package com.rio.terminal.presentation
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.collectAsState
@@ -15,12 +14,12 @@ class MainActivity : ComponentActivity() {
             TerminalTheme {
                 val viewModel: TerminalViewModel = viewModel()
                 val screenState = viewModel.state.collectAsState()
-                when (screenState.value) {
+                when (val currentState = screenState.value) {
 
                     is TerminalScreenState.Initial -> {}
 
                     is TerminalScreenState.Content -> {
-                        Log.d("MainActivity", screenState.value.toString())
+                        Terminal(currentState.barList.barList)
                     }
                 }
             }
