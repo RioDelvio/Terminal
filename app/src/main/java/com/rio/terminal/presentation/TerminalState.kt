@@ -13,8 +13,9 @@ import kotlin.math.roundToInt
 data class TerminalState(
     val barList: List<Bar>,
     val visibleBarCount: Int = 100,
-    val terminalWidth: Float = 0f,
-    val scrolledBy: Float = 0f
+    val terminalWidth: Float = 1f,
+    val scrolledBy: Float = 0f,
+    val terminalHeight: Float = 1f
 ) : Parcelable {
 
     val barWidth: Float
@@ -28,6 +29,15 @@ data class TerminalState(
             val endIndex = (startIndex + visibleBarCount).coerceAtMost(barList.size)
             return barList.subList(startIndex, endIndex)
         }
+
+    val max: Float
+        get() = visibleBars.maxOf { it.high }
+
+    val min: Float
+        get() = visibleBars.minOf { it.low }
+
+    val pxPerPoint: Float
+        get() = terminalHeight / (max - min)
 }
 
 @Composable
