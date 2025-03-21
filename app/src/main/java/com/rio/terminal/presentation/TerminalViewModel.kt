@@ -1,6 +1,5 @@
 package com.rio.terminal.presentation
 
-import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.rio.terminal.data.ApiFactory
@@ -15,17 +14,21 @@ class TerminalViewModel : ViewModel() {
     private val _state = MutableStateFlow<TerminalScreenState>(TerminalScreenState.Initial)
     val state = _state.asStateFlow()
 
+    private var lastState: TerminalScreenState = TerminalScreenState.Initial
+
     init {
         loadBarList()
     }
 
-    private fun loadBarList() {
+    fun loadBarList(timeFrame: TimeFrame = TimeFrame.H1) {
+        lastState = _state.value
+        _state.value = TerminalScreenState.Loading
         viewModelScope.launch {
             try {
-                val barList = apiService.loadBars()
-                _state.value = TerminalScreenState.Content(barList)
+                val barList = apiService.loadBars(timeFrame.value)
+                _state.value = TerminalScreenState.Content(barList, timeFrame)
             } catch (e: Exception) {
-                Log.d("TerminalViewModel", "Exception caught: $e")
+                _state.value = lastState
             }
 
         }
