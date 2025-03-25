@@ -1,5 +1,6 @@
 package com.rio.terminal.presentation
 
+import java.util.Calendar
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.rememberTransformableState
@@ -33,6 +34,8 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.rio.terminal.data.Bar
+import java.util.Locale
 import kotlin.math.roundToInt
 
 private const val MIN_BARS_COUNT = 20
@@ -69,7 +72,8 @@ fun Terminal(
                 terminalState = terminalState,
                 onTerminalStateChange = {
                     terminalState.value = it
-                }
+                },
+                timeFrame = currentState.timeFrame
             )
 
             terminalState.value.visibleBars.firstOrNull()?.let {
@@ -92,7 +96,8 @@ fun Terminal(
 fun Chart(
     modifier: Modifier = Modifier,
     terminalState: State<TerminalState>,
-    onTerminalStateChange: (TerminalState) -> Unit
+    onTerminalStateChange: (TerminalState) -> Unit,
+    timeFrame: TimeFrame
 ) {
     val currentState = terminalState.value
 
@@ -114,6 +119,8 @@ fun Chart(
         )
     }
 
+    val textMeasurer = rememberTextMeasurer()
+
     Canvas(
         modifier = modifier
             .fillMaxSize()
@@ -123,7 +130,6 @@ fun Chart(
                 bottom = 36.dp,
                 end = 36.dp
             )
-            .clipToBounds()
             .transformable(transformableState)
             .onSizeChanged {
                 onTerminalStateChange(
@@ -139,6 +145,17 @@ fun Chart(
         translate(left = currentState.scrolledBy) {
             currentState.barList.forEachIndexed { index, bar ->
                 val offsetX = size.width - index * currentState.barWidth
+                drawTimeDelimiters(
+                    bar = bar,
+                    nextBar = if (index < currentState.barList.size -1) {
+                        currentState.barList[index + 1]
+                    } else {
+                        null
+                    },
+                    timeFrame = timeFrame,
+                    offsetX = offsetX,
+                    textMeasurer = textMeasurer
+                )
                 drawLine(
                     color = Color.White,
                     start = Offset(offsetX, size.height - ((bar.low - min) * pxPerPoint)),
@@ -202,6 +219,68 @@ fun Prices(
     ) {
         drawPrices(max, min, pxPerPoint, lastPrice, textMeasurer)
     }
+}
+
+private fun DrawScope.drawTimeDelimiters(
+    bar: Bar,
+    nextBar: Bar?,
+    timeFrame: TimeFrame,
+    offsetX: Float,
+    textMeasurer: TextMeasurer
+) {
+
+    val calendar = bar.calendar
+    val minutes = calendar.get(Calendar.MINUTE)
+    val hour = calendar.get(Calendar.HOUR_OF_DAY)
+    val day = calendar.get(Calendar.DAY_OF_MONTH)
+
+    val shouldDrawDelimiter = when (timeFrame) {
+        TimeFrame.M5 -> {
+            minutes == 0
+        }
+        TimeFrame.M15 -> {
+            minutes == 0 && hour % 2 == 0
+        }
+        TimeFrame.M30, TimeFrame.H1 -> {
+            val nextBarDay = nextBar?.calendar?.get(Calendar.DAY_OF_MONTH)
+            day != nextBarDay
+        }
+    }
+
+    if (!shouldDrawDelimiter) return
+
+    drawLine(
+        color = Color.White.copy(alpha = 0.5f),
+        start = Offset(offsetX, 0f),
+        end = Offset(offsetX, size.height),
+        strokeWidth = 1f,
+        pathEffect = PathEffect.dashPathEffect(
+            floatArrayOf(4.dp.toPx(), 4.dp.toPx())
+        )
+    )
+
+    val nameOfMonth = calendar.getDisplayName(Calendar.MONTH, Calendar.SHORT, Locale.getDefault())
+    val text = when (timeFrame) {
+        TimeFrame.M5, TimeFrame.M15 -> {
+            String.format("%02d:00", hour)
+        }
+        TimeFrame.M30, TimeFrame.H1 -> {
+            String.format("%s %s", day, nameOfMonth)
+        }
+    }
+
+    val textLayoutResult = textMeasurer.measure(
+        text = text,
+        style = TextStyle(
+            color = Color.White,
+            fontSize = 12.sp
+        )
+    )
+
+    drawText(
+        textLayoutResult = textLayoutResult,
+        topLeft = Offset(offsetX - textLayoutResult.size.width / 2, size.height)
+    )
 }
 
 private fun DrawScope.drawPrices(
