@@ -1,6 +1,6 @@
 package com.rio.terminal.data
 
-import android.icu.util.Calendar
+import java.util.Calendar
 import android.os.Parcelable
 import androidx.compose.runtime.Immutable
 import com.google.gson.annotations.SerializedName
